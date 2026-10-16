@@ -1,0 +1,10 @@
+# Never. These hold live keys for Convex, n8n, Retell and OpenRouter.
+.env.local
+.env
+node_modules/
+
+# Generated from build-workflows.py, and they bake the secrets in.
+n8n/0*.json
+
+scripts/_*.mjs
+scripts/shot.png

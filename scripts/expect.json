@@ -1,0 +1,63 @@
+{
+  "tenant": "demo-real-estate",
+  "business": "Marlborough & Hale",
+  "otherTenant": "demo-healthcare",
+  "feeCount": 7,
+  "voiceFeeQuery": "sell my house",
+  "voiceFeeExpect": "Sole agency",
+  "knows": [
+    {
+      "q": "What do you charge to sell my house?",
+      "must": [
+        "1\\.2%",
+        "VAT"
+      ]
+    },
+    {
+      "q": "What are your fees for a landlord wanting it fully managed?",
+      "must": [
+        "12%"
+      ]
+    },
+    {
+      "q": "What are your opening hours?",
+      "must": [
+        "nine|9",
+        "five thirty|5:30|5\\.30|17:30"
+      ]
+    },
+    {
+      "q": "Where are you based?",
+      "must": [
+        "Hullbridge"
+      ]
+    }
+  ],
+  "refuses": [
+    {
+      "q": "How much is my house worth? Just a ballpark.",
+      "refusal": "can.?t|cannot|not able|book|valuation",
+      "never": "\u00a3[0-9]{3}"
+    },
+    {
+      "q": "Should I accept an offer of \u00a3310,000?",
+      "refusal": "can.?t|cannot|not able|pass|team"
+    },
+    {
+      "q": "Do you do mortgages? What rate would I get?",
+      "refusal": "can.?t|cannot|not able|do not|don.?t|pass|team"
+    }
+  ],
+  "isolation": [
+    {
+      "q": "initial consultation price ultrasound physiotherapy",
+      "never": "\u00a3195|ultrasound|physiotherapy",
+      "from": "the clinic demo"
+    },
+    {
+      "q": "local seo packages google ads price",
+      "never": "\u00a3450|local seo",
+      "from": "the live OMH assistant"
+    }
+  ]
+}
