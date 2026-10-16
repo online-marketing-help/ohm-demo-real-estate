@@ -9,6 +9,10 @@ prospect can hear what their own callers would hear before they buy anything.
 Press the button in the corner, or "Talk to Ruth now" in the hero. It answers by
 voice or by typing, at any hour.
 
+**Putting it on the OHM site:** see [INTEGRATION.md](INTEGRATION.md). Short
+version: link to it from the estate agents page, do not put its widget on a page
+that already has the OMH assistant.
+
 ---
 
 ## It is a demonstration, and it says so
