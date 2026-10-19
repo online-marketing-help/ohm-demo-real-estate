@@ -185,8 +185,16 @@ def build_chat():
                f"tenant: '{TENANT}' }} ) }}}}", -600, -160),
 
         {"parameters": {"jsCode":
+            "// The visitor plays the caller and can give a name. Hand it to the\n"
+            "// agent as context rather than as something the caller just said.\n"
             "const b = $('Chat Webhook').item.json.body || {};\n"
-            "return [{ json: { chat_input: String(b.message || '').slice(0, 1200) } }];"},
+            "const msg = String(b.message || '').slice(0, 1200);\n"
+            "const who = String(b.caller_name || '').trim().slice(0, 40);\n"
+            "const chat_input = who\n"
+            "  ? '[The caller has given their name as ' + who + '. Use it naturally, "
+            "not in every sentence.]\\n\\n' + msg\n"
+            "  : msg;\n"
+            "return [{ json: { chat_input } }];"},
          "id": "ctx", "name": "Build Context", "type": "n8n-nodes-base.code",
          "typeVersion": 2, "position": [-400, 0]},
 
@@ -319,6 +327,7 @@ def build_voice():
                         "metadata: { session_id: $json.body.session_id, "
                         f"page_url: $json.body.page_url, tenant: '{TENANT}' }}, "
                         "retell_llm_dynamic_variables: { session_id: $json.body.session_id, "
+                        "caller_name: String($json.body.caller_name || '').slice(0, 40), "
                         "now_uk: $now.setZone('Europe/London').toFormat('cccc d LLLL yyyy, HH:mm') "
                         "} }) }}",
                         "options": {}},

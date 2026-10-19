@@ -196,5 +196,31 @@ HTML = f"""<!doctype html>
 """
 
 (DIST / "index.html").write_text(HTML, encoding="utf-8")
+
+# A bare page holding nothing but the assistant, docked. The OMH industry pages
+# put this in an iframe so a visitor can play the caller without a second
+# floating pill appearing next to OMH's own assistant.
+# Nothing but the assistant. The name is asked for inside the panel now: as a
+# form above it, it read as a second unrelated box stacked on the first, with
+# its own border and its own grey helper text.
+EMBED = f"""<!doctype html>
+<html lang="en-GB"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{b['name']} assistant</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body {{ height:100%; margin:0; background:transparent }}
+  body {{ font-family:"Source Sans 3",system-ui,sans-serif }}
+  #dock {{ height:100% }}
+</style></head>
+<body><div id="dock"></div>
+<script src="assistant.js" data-mount="#dock" defer></script>
+</body></html>
+"""
+(DIST / "embed.html").write_text(EMBED, encoding="utf-8")
+print("  dist/embed.html   docked, no pill")
 print(f"  dist/index.html   {b['name']}")
 print(f"  accent {ACCENT}, {'clinic' if IS_CLINIC else 'agency'} layout")

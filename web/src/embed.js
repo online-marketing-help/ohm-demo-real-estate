@@ -45,6 +45,21 @@
   var CHAT_URL = data.chatUrl || N8N + "/webhook/demo-real-estate-chat";
   var VOICE_TOKEN_URL = data.voiceTokenUrl || N8N + "/webhook/demo-real-estate-voice-token";
   var SIDE = data.position === "left" ? "left" : "right";
+  /* Inline mode. The OMH site already has its own assistant pinned to the
+     bottom right of every page; a second floating pill next to it is confusing
+     and makes a fictional business's prices look like ours. With data-mount the
+     panel is rendered inside that element instead, docked and already open,
+     with no pill at all. */
+  var MOUNT = data.mount || "";
+
+  /* The visitor plays the caller, so they can give their own name and be
+     addressed by it. Held here only; it is sent with each message and with the
+     voice token, never stored. */
+  var caller = "";
+  var askedName = false;
+  var BUSINESS = "Marlborough and Hale";
+  var OPENER_TAIL =
+    "I can tell you what we charge, what we cover, and book your valuation or a viewing.";
   /* The ESM build, not the UMD one. retell-client-js-sdk's UMD file leaves
      eventemitter3 and livekit-client as externals, so loading it from a CDN in
      a plain script tag throws "Cannot read properties of undefined (reading
@@ -190,6 +205,22 @@ button,input{font:inherit;color:inherit;margin:0}
 .typing i:nth-child(3){animation-delay:.3s}
 @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-4px);opacity:1}}
 
+.namestep{margin:auto 0;padding:6px 2px;text-align:center}
+.ns-q{font:600 19px/1.3 var(--font-display,"Instrument Sans",system-ui,sans-serif);
+  color:var(--color-ink,#101828)}
+.ns-sub{font-size:14px;color:var(--color-muted,#667085);margin:6px 0 16px}
+.ns-row{display:flex;gap:8px;margin:0 auto;max-width:320px}
+.ns-row input{flex:1;min-width:0;padding:12px 15px;border-radius:999px;font:inherit;font-size:15px;
+  border:1px solid var(--color-line,#d9ddd8);background:var(--color-surface,#fff);
+  color:var(--color-ink,#101828);text-align:center}
+.ns-row input:focus{outline:none;border-color:var(--color-amber,#d79a37)}
+.ns-row button{border:none;border-radius:999px;padding:12px 20px;cursor:pointer;font:inherit;
+  font-weight:600;font-size:15px;background:var(--color-ink,#101828);color:#fff}
+.ns-row button:disabled{opacity:.35;cursor:not-allowed}
+.ns-skip{display:block;margin:14px auto 0;background:none;border:none;cursor:pointer;
+  font:inherit;font-size:13.5px;color:var(--color-muted,#667085);text-decoration:underline}
+.ns-skip:hover{color:var(--color-ink,#101828)}
+
 .chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 12px}
 .chips button{padding:9px 15px;border-radius:999px;cursor:pointer;font-size:13.5px;
   background:var(--color-surface,#fff);color:var(--color-ink,#101828);
@@ -239,6 +270,14 @@ button,input{font:inherit;color:inherit;margin:0}
   .panel{right:8px;left:8px;bottom:8px;width:auto;height:min(82vh,660px)}
   .fab{${SIDE}:12px;bottom:12px}
 }
+/* Docked: fills whatever box the host page gives it. */
+:host(.inline){display:flex;height:100%}
+:host(.inline) > div{display:flex;flex:1;min-height:0}
+:host(.inline) .panel{position:static;width:100%;flex:1;height:auto;min-height:0;max-height:none;
+  box-shadow:none;border-radius:var(--radius-card,14px)}
+:host(.inline) .fab{display:none}
+:host(.inline) .x{display:none}
+
 @media (prefers-reduced-motion:reduce){
   .bub,.dot,.typing i,.orb.live,.orb.connecting{animation:none}
 }
@@ -332,8 +371,54 @@ button,input{font:inherit;color:inherit;margin:0}
 
   /* ------------------------------------------------------------- render */
 
+  function nameStep() {
+    var wrap = document.createElement("div");
+    wrap.className = "namestep";
+    var h = document.createElement("p");
+    h.className = "ns-q";
+    h.textContent = "Who shall I say is calling?";
+    var sub = document.createElement("p");
+    sub.className = "ns-sub";
+    sub.textContent = "You'll be answered by name, by text and on the phone.";
+    var row = document.createElement("form");
+    row.className = "ns-row";
+    var i = document.createElement("input");
+    i.type = "text";
+    i.maxLength = 40;
+    i.autocomplete = "name";
+    i.placeholder = "Your name";
+    i.setAttribute("aria-label", "Your name");
+    var go = document.createElement("button");
+    go.type = "submit";
+    go.textContent = "Start";
+    go.disabled = true;
+    i.addEventListener("input", function () { go.disabled = !i.value.trim(); });
+    row.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (i.value.trim()) api.setCaller(i.value);
+    });
+    row.append(i, go);
+    var skip = document.createElement("button");
+    skip.type = "button";
+    skip.className = "ns-skip";
+    skip.textContent = "Skip, just start talking";
+    skip.addEventListener("click", function () {
+      askedName = true;
+      renderThread();
+      if (input) input.focus();
+    });
+    wrap.append(h, sub, row, skip);
+    return wrap;
+  }
+
   function renderThread() {
     thread.textContent = "";
+    /* Docked on someone else's page, the first thing it asks for is a name, so
+       the visitor can hear it answer them personally. */
+    if (MOUNT && !caller && !askedName) {
+      thread.appendChild(nameStep());
+      return;
+    }
     state.msgs.forEach(function (m) {
       var d = document.createElement("div");
       d.className = "bub " + m.role;
@@ -360,8 +445,8 @@ button,input{font:inherit;color:inherit;margin:0}
     vLead.textContent =
       v === "live"
         ? "Speak normally. You can interrupt at any time. " + mmss()
-        : "It answers in English, from our own information, and can book your " +
-          "consultation. Your browser will ask for the microphone.";
+        : "It answers in English, from our own information, and can book your valuation or a viewing. " +
+          "Your browser will ask for the microphone.";
     vNote.textContent = state.note;
     vNote.hidden = !state.note;
     vNote.className = "vnote" + (v === "error" ? " bad" : "");
@@ -467,7 +552,8 @@ button,input{font:inherit;color:inherit;margin:0}
         return fetch(VOICE_TOKEN_URL, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ session_id: sess, page_url: location.href }),
+          body: JSON.stringify({ session_id: sess, caller_name: caller,
+                                 page_url: location.href }),
         }).then(function (r) {
           if (!r.ok) throw new Error("token");
           return r.json();
@@ -575,6 +661,7 @@ button,input{font:inherit;color:inherit;margin:0}
   });
 
   document.addEventListener("keydown", function (e) {
+    if (MOUNT) return;                 /* docked: there is nothing to close */
     if (e.key === "Escape" && state.open) {
       stopVoice();
       state.open = false;
@@ -588,9 +675,40 @@ button,input{font:inherit;color:inherit;margin:0}
   });
 
   function mount() {
-    document.body.appendChild(host);
+    var target = MOUNT ? document.querySelector(MOUNT) : null;
+    if (MOUNT && !target) {
+      /* Say so rather than silently falling back to a floating pill the page
+         did not ask for. */
+      if (window.console) console.warn("[assistant] data-mount not found: " + MOUNT);
+    }
+    if (target) {
+      host.className = "inline";
+      host.style.cssText = "all:initial;display:flex;height:100%";
+      target.appendChild(host);
+      state.open = true;
+    } else {
+      document.body.appendChild(host);
+    }
     render();
   }
+  /* The page this is embedded in can ask a question or set the caller, so the
+     suggested prompts beside the frame actually do something rather than being
+     a list of things the visitor has to retype. Only honoured when docked, and
+     only for the two messages below. */
+  if (MOUNT) {
+    window.addEventListener("message", function (e) {
+      var d = e.data;
+      if (!d || typeof d !== "object") return;
+      if (d.type === "assistant:ask" && typeof d.text === "string") {
+        askedName = true;
+        render();
+        send(d.text.slice(0, 300));
+      } else if (d.type === "assistant:caller" && typeof d.name === "string") {
+        api.setCaller(d.name);
+      }
+    });
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", mount);
   } else {
@@ -599,7 +717,7 @@ button,input{font:inherit;color:inherit;margin:0}
 
   /* A small handle, so the site can open the panel from its own "Chat to us"
      button instead of only the floating one. */
-  window.DemoAssistant = {
+  var api = window.DemoAssistant = {
     open: function (tab) {
       state.open = true;
       if (tab === "voice" || tab === "chat") state.tab = tab;
@@ -607,5 +725,17 @@ button,input{font:inherit;color:inherit;margin:0}
     },
     close: function () { stopVoice(); state.open = false; render(); },
     sessionId: function () { return sess; },
+    /* Set who the visitor is playing. Greets them by name straight away so the
+       effect is visible before they type anything. */
+    setCaller: function (name) {
+      caller = String(name || "").trim().slice(0, 40);
+      askedName = true;
+      if (!caller) return;
+      state.msgs = [{ role: "assistant",
+        text: "Hello " + caller + ", you're through to " + BUSINESS + ". " + OPENER_TAIL }];
+      state.open = true;
+      render();
+      if (input) input.focus();
+    },
   };
 })();
